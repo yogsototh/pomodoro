@@ -48,6 +48,7 @@ while (true) {
     print "$(date +"%H:%M: ") $task" >> $logfile
     print -n -- "WORK NOW! "
     ysleep WORKING_TIME
+    print -n "\nTime to take a break: "
     notify "Time to take break"
     if ((nb % 4 == 0)); then 
         RELAX_TIME=$SHORT_RELAX_TIME
