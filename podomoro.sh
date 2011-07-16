@@ -89,9 +89,9 @@ while (true) {
     print -n "\nTime for a break."
     notify "Time for a break."
     if ((nb++ % 4 == 0)); then 
-        RELAX_TIME=$SHORT_RELAX_TIME
-    else
         RELAX_TIME=$LONG_RELAX_TIME
+    else
+        RELAX_TIME=$SHORT_RELAX_TIME
     fi
     timer $RELAX_TIME
 }
