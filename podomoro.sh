@@ -53,7 +53,7 @@ if ((NO_LOGS)); then
     logfile=/dev/null
 else
     logfiledir=$HOME/Documents/Podomoro
-    logfilename=$(date +"podomoro-%Y-%m-%d.tasks")
+    logfilename=$(date +"tasks-%Y-%m-%d.txt")
     logfile=$logfiledir/$logfilename
     while [[ ! -d $logfiledir ]]; do 
         print -- "$logfiledir does not exists. Would you want to create it? (Y/N)"
