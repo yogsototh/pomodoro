@@ -57,7 +57,8 @@ function notify() {
 function timer() {
     local m=$1
     local s=00
-    local rem="\b\b\b\b\b"
+    local rem=""
+    local firsttime=1
     while (( m+s > 0 )); do
         ((s--))
         if ((s<0)); then 
@@ -65,8 +66,11 @@ function timer() {
             ((m--))
         fi
         printf "$rem%02d:%02d" $m $s
+        (( $firsttime )) && {
+            rem="\b\b\b\b\b"
+            firsttime=0
+        }
         read -t 1 && { 
-            print
             return 1
         }
     done
@@ -76,7 +80,8 @@ function timer() {
 funtion posttimer() {
     local m=00
     local s=00
-    local rem="\b\b\b\b\b\b"
+    local rem=""
+    local firsttime=1
     while : ; do
         ((s++))
         if ((s>59)); then 
@@ -85,6 +90,10 @@ funtion posttimer() {
             notify "\nTime for a break\n"
         fi
         printf "$rem+%02d:%02d" $m $s
+        (( $firsttime )) && {
+            rem="\b\b\b\b\b\b"
+            firsttime=0
+        }
         read -t 1 && break
     done
 }
@@ -133,7 +142,7 @@ while (true) {
     # print "$(date +"%A (%F) %H:%M → ") $task" >> $logfile
     print -n -- "WORK NOW! "
     if timer $PODOMORO_WORKING_TIME; then
-        notify "Time for a break."
+        notify "Time for a break. "
         posttimer 
     fi
     print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
@@ -143,6 +152,6 @@ while (true) {
     else
         PODOMORO_RELAX_TIME=$PODOMORO_SHORT_RELAX_TIME
     fi
-    notify "PAUSE      "
+    notify "PAUSE "
     timer $PODOMORO_RELAX_TIME
 }
