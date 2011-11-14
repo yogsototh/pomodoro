@@ -6,19 +6,21 @@
 # Once finished you are notified it is time to take a break (5 min).
 # After 4 work sessions, you take a longer break (30 min).
 # Each work session require you enter a name.
-# At the end of the day, all your tasks are keep into ~/Documents/Podomoro
+# At the end of the day, all your tasks are keep into ~/Documents/Pomodoro
 
-PODOMORO_NO_LOGS=0
-# in minutes
-PODOMORO_WORKING_TIME=25
-PODOMORO_SHORT_RELAX_TIME=5
-PODOMORO_LONG_RELAX_TIME=30
+POMODORO_NO_LOGS=0
+POMODORO_LOG_DIRECTORY="$HOME/Documents/Pomodoro"
+
+# times are in minutes
+POMODORO_WORKING_TIME=25
+POMODORO_SHORT_RELAX_TIME=5
+POMODORO_LONG_RELAX_TIME=30
 
 function notify() {
     print -n -- "$*"
 
-    if [[ "$PODOMORO_NOTIFY" != "" ]]; then
-        eval $( echo $PODOMORO_NOTIFY | sed 's/%m/"'$message'"/g' )
+    if [[ "$POMODORO_NOTIFY" != "" ]]; then
+        eval $( echo $POMODORO_NOTIFY | sed 's/%m/"'$message'"/g' )
         return
     fi
 
@@ -44,9 +46,9 @@ function notify() {
                ;;
         *) {
             print -- "I don't made a notification system for your system"
-            print -- "You can use the \$HOME/.podomoro file to declare your own notification system"
+            print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
             print -- "For example: "
-            print -- "PODOMORO_NOTIFY=\"notify_cmd --message=%m\""
+            print -- "POMODORO_NOTIFY=\"notify_cmd --message=%m\""
             print
             print -- "Then it will be executed as \"notify_cmd\" --message=\"notification message\""
             } >&2
@@ -101,14 +103,17 @@ funtion posttimer() {
 # Where to keep trak of your documents?
 
 function initialize() {
-    # read the .podomoro file if it exists
-    [[ -e $HOME/.podomoro ]] && source $HOME/.podomoro
-    if ((PODOMORO_NO_LOGS)); then
+    # read the .pomodoro file if it exists
+    [[ -e $HOME/.pomodoro ]] && source $HOME/.pomodoro
+
+    if ((POMODORO_NO_LOGS)); then
         logfile=/dev/null
     else
-        logfiledir=$HOME/Documents/Podomoro
+        # Verify where to write podomoro logs
+        logfiledir=$HOME/Documents/Pomodoro
         logfilename=$(date +"week-%V.txt")
         logfile=$logfiledir/$logfilename
+
         while [[ ! -d $logfiledir ]]; do 
             print -- "$logfiledir does not exists. Would you want to create it? (y/n)"
             read answer
@@ -126,32 +131,63 @@ function initialize() {
                     {
                         print -- "logfiledir=$logfiledir" 
                         (( NO_LOGS )) && print -- "NO_LOGS=1" 
-                    } > $HOME/.podomoro
+                    } > $HOME/.pomodoro
                     ;;
             esac
         done
     fi
 }
 
-nb=1
-initialize
-while (true) {
+typeset -U lastTasks
+function askTitle() {
+    ((${#lastTasks})) && print
+    i=1;
+    print
+    for task in $lastTasks; do
+        print "$i) $task"
+        ((i++))
+    done
     notify "Enter the title of the task: "
     read task
+
+    if print -- $task | grep -e '^[0-9][0-9]*$' >/dev/null; then
+        if (( task <= ${#lastTasks} )); then
+            task="${lastTasks[$task]}"
+            return
+        fi
+    fi
+
+    lastTasks=( $lastTasks "$task" )
+}
+
+nb=1
+
+# readArguments $*
+
+initialize
+
+while (true) {
+    # Ask the user the title of the task
+    askTitle
+
+    # Start working
     startedTime=$(date +"%H:%M")
-    # print "$(date +"%A (%F) %H:%M → ") $task" >> $logfile
     print -n -- "WORK NOW! "
-    if timer $PODOMORO_WORKING_TIME; then
+    if timer $POMODORO_WORKING_TIME; then
         notify "Time for a break. "
         posttimer 
     fi
+
+    # work is finished
     print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
 
+    # Time for a break
     if ((nb++ % 4 == 0)); then 
-        PODOMORO_RELAX_TIME=$PODOMORO_LONG_RELAX_TIME
+        notify "Long pause "
+        POMODORO_RELAX_TIME=$POMODORO_LONG_RELAX_TIME
     else
-        PODOMORO_RELAX_TIME=$PODOMORO_SHORT_RELAX_TIME
+        notify "Relax "
+        POMODORO_RELAX_TIME=$POMODORO_SHORT_RELAX_TIME
     fi
-    notify "PAUSE "
-    timer $PODOMORO_RELAX_TIME
+    timer $POMODORO_RELAX_TIME
 }

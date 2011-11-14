@@ -1,6 +1,6 @@
-# Podomoro
+# Pomodoro
 
-This is a command line tool for the podomoro technique. 
+This is a command line tool for the pomodoro technique. 
 
 - Work 25 min, relax 5 min.
 - Work 25 min, relax 5 min.
