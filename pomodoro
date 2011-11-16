@@ -16,6 +16,18 @@ POMODORO_WORKING_TIME=25
 POMODORO_SHORT_RELAX_TIME=5
 POMODORO_LONG_RELAX_TIME=30
 
+# used to list latests task names
+typeset -U latestTasks
+
+function showConfMessage() {
+    print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
+    print -- "For example you could add: "
+    print -- "POMODORO_NOTIFY=\"notify_cmd --message=%m\""
+    print
+    print -- "Then notification will be executed as \"notify_cmd\" --message=\"notification message\""
+}
+
+# A nofity function as portable as possible
 function notify() {
     print -n -- "$*"
 
@@ -30,27 +42,32 @@ function notify() {
                     {
                     print -- "Growl seems not installed"
                     print -- "If you want to have notifications you might want to install it"
+                    showConfMessage
+                    return
                     } >&2
-                else
-                    growlnotify -m "Pomodory says $*"
                 fi
+                growlnotify -m "Pomodory says $*"
                 ;;
         Linux) # on Ubuntu => sudo apt-get install libnotify-bin
                # on other systems libnotify
                local DELAY=5 # in seconds
                local ICON=/usr/share/icons/Tango/32x32/actions/appointment.png
-               notify-send \
+               if [[ ! -x =notify-send ]]; then 
+                    {
+                    print -- "notify-send seems not installed"
+                    print -- "Please install libnotify (apt-get install libnotify) on ubuntu for example"
+                    showConfMessage
+                    } >&2
+                    return
+                fi
+                notify-send \
                    --urgency=critical \
                    --expire-time=$(( DELAY * 1000 )) \
                    --icon=$ICON "Pomodoro says" $*
-               ;;
+                ;;
         *) {
             print -- "I don't made a notification system for your system"
-            print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
-            print -- "For example: "
-            print -- "POMODORO_NOTIFY=\"notify_cmd --message=%m\""
-            print
-            print -- "Then it will be executed as \"notify_cmd\" --message=\"notification message\""
+            showConfMessage
             } >&2
     esac
 }
@@ -79,6 +96,8 @@ function timer() {
     print
     return 0
 }
+
+# show a time counter
 funtion posttimer() {
     local m=00
     local s=00
@@ -100,8 +119,20 @@ funtion posttimer() {
     done
 }
 
-# Where to keep trak of your documents?
+# If you had done some task this week
+# We help you find these
+function initLatestTasksFromLogFile() {
+    if [[ ! -r $logfile ]]; then 
+        [[ ! -r $lastweeklogfile ]] && return
+        latestlogfile="$lastweeklogfile"
+    else
+        latestlogfile="$logfile"
+    fi
+    cmd="latestTasks=( $( tail -n 5 $latestlogfile | awk '{printf "\""; for (i=6;i<=NF;i++) printf $i" "; print "\""}' ) )"
+    eval $cmd
+}
 
+# Which file to track your activity?
 function initialize() {
     # read the .pomodoro file if it exists
     [[ -e $HOME/.pomodoro ]] && source $HOME/.pomodoro
@@ -110,8 +141,9 @@ function initialize() {
         logfile=/dev/null
     else
         # Verify where to write podomoro logs
-        logfiledir=$HOME/Documents/Pomodoro
-        logfilename=$(date +"week-%V.txt")
+        logfiledir="$POMODORO_LOG_DIRECTORY"
+        logfilename=$(date +"week-%V-%Y.txt")
+        lastweeklogfile=$(date -d 'last week' +"week-%V-%Y.txt")
         logfile=$logfiledir/$logfilename
 
         while [[ ! -d $logfiledir ]]; do 
@@ -136,14 +168,16 @@ function initialize() {
             esac
         done
     fi
+    initLatestTasksFromLogFile
 }
 
-typeset -U lastTasks
+
+
 function askTitle() {
-    ((${#lastTasks})) && print
+    ((${#latestTasks})) && print
     i=1;
     print
-    for task in $lastTasks; do
+    for task in $latestTasks; do
         print "$i) $task"
         ((i++))
     done
@@ -151,21 +185,18 @@ function askTitle() {
     read task
 
     if print -- $task | grep -e '^[0-9][0-9]*$' >/dev/null; then
-        if (( task <= ${#lastTasks} )); then
-            task="${lastTasks[$task]}"
+        if (( task <= ${#latestTasks} )); then
+            task="${latestTasks[$task]}"
             return
         fi
     fi
 
-    lastTasks=( $lastTasks "$task" )
+    latestTasks=( $latestTasks "$task" )
 }
-
-nb=1
-
-# readArguments $*
 
 initialize
 
+nb=1;
 while (true) {
     # Ask the user the title of the task
     askTitle
