@@ -10,6 +10,9 @@
 
 POMODORO_NO_LOGS=0
 POMODORO_LOG_DIRECTORY="$HOME/Documents/Pomodoro"
+# if you add a TODO.txt file in $POMODORO_LOG_DIRECTORY
+# The list of TODO is presented for shortcut
+POMODORO_TODO_FILE="$POMODORO_LOG_DIRECTORY/TODO.txt"
 
 # times are in minutes
 POMODORO_WORKING_TIME=25
@@ -18,6 +21,7 @@ POMODORO_LONG_RELAX_TIME=30
 
 # used to list latests task names
 typeset -U latestTasks
+typeset -U todoTasks
 
 function showConfMessage() {
     print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
@@ -41,8 +45,9 @@ function notify() {
         Darwin) # On Mac
                 if [[ ! -x =growlnotify ]]; then 
                     {
-                    print -- "Growl seems not installed"
-                    print -- "If you want to have notifications you might want to install it"
+                    print -- "Growl seems not to be installed"
+                    print -- "If you want to be notified you should install it"
+                    print -- "More precisely I need the executable growlnotify"
                     showConfMessage
                     return
                     } >&2
@@ -73,8 +78,10 @@ function notify() {
     esac
 }
 
-# show timer
-
+# show timer take two arguments
+# time and a message
+# after time is expired the message is send to notification system
+# And the counter grow.
 function timer() {
     local timeToWait=$1
     shift
@@ -84,6 +91,7 @@ function timer() {
     fi
 }
 
+# Show a timer, stop if you hit Return
 function pretimer() {
     local m=$1
     local s=00
@@ -108,7 +116,7 @@ function pretimer() {
     return 0
 }
 
-# show a time counter
+# Show a growing counter, stop if you hit Return
 funtion posttimer() {
     local m=00
     local s=00
@@ -141,7 +149,13 @@ function initLatestTasksFromLogFile() {
     else
         latestlogfile="$logfile"
     fi
-    cmd="latestTasks=( $( tail -n 5 $latestlogfile | awk '{printf "\""; for (i=6;i<=NF;i++) printf $i" "; print "\""}' ) )"
+    local cmd="latestTasks=( $( tail -n 5 $latestlogfile | awk '{printf "\""; gsub(/"/,"\\\""); for (i=6;i<=NF;i++) printf $i" "; print "\""}' ) )"
+    eval $cmd
+}
+
+function initTodoTasksFromFile() {
+    [[ ! -r $POMODORO_TODO_FILE ]] && return
+    local cmd="todoTasks=( $(< $POMODORO_TODO_FILE | awk '{printf "\""; gsub(/"/,"\\\""); printf $0; print "\""; }') )"
     eval $cmd
 }
 
@@ -156,7 +170,11 @@ function initialize() {
         # Verify where to write podomoro logs
         logfiledir="$POMODORO_LOG_DIRECTORY"
         logfilename=$(date +"week-%V-%Y.txt")
-        lastweeklogfile=$(date -d 'last week' +"week-%V-%Y.txt")
+
+        case $(uname) in
+            Linux) lastweeklogfile=$(date -d 'last week' +"week-%V-%Y.txt");;
+            *) lastweeklogfile=$(date -v-7d +"week-%V-%Y.txt");;
+        esac
         logfile=$logfiledir/$logfilename
 
         while [[ ! -d $logfiledir ]]; do 
@@ -182,28 +200,45 @@ function initialize() {
         done
     fi
     initLatestTasksFromLogFile
+    initTodoTasksFromFile
 }
 
-
-
+# ask the title of the tasks
 function askTitle() {
     ((${#latestTasks})) && print
     i=1;
     print
     for task in $latestTasks; do
-        print "$i) $task"
+        print -- "$i) $task"
         ((i++))
     done
-    notify "Enter the title of the task: "
+    (( ${#todoTasks} > 0 )) && print -P -- "%BTODO%b"
+    for task in $todoTasks; do
+        print -P -- "%B$i) $task%b"
+        ((i++))
+    done
+    local choiceMsg=""
+    ((i==2)) && choiceMsg=" (or 1)"
+    ((i>2)) && choiceMsg=" (or 1 - $((i-1)))"
+    notify "Enter the title of the task${choiceMsg}: "
     read task
 
+    # if the user returned a number
     if print -- $task | grep -e '^[0-9][0-9]*$' >/dev/null; then
+        # if the number corresond to a latestTasks
         if (( task <= ${#latestTasks} )); then
             task="${latestTasks[$task]}"
             return
         fi
+        # if the number is a todo task number
+        task=$(( task - ${#latestTasks} + 1 ))
+        if (( task <= ${#todoTasks} )); then
+            task="${todoTasks[$task]}"
+            return
+        fi
     fi
 
+    # if it wasn't a valid number add the task to latestTasks
     latestTasks=( $latestTasks "$task" )
 }
 
