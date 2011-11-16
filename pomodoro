@@ -29,8 +29,9 @@ function showConfMessage() {
 
 # A nofity function as portable as possible
 function notify() {
-    print -n -- "$*"
+    local message="$*"
 
+    print -n -- "$message"
     if [[ "$POMODORO_NOTIFY" != "" ]]; then
         eval $( echo $POMODORO_NOTIFY | sed 's/%m/"'$message'"/g' )
         return
@@ -46,7 +47,7 @@ function notify() {
                     return
                     } >&2
                 fi
-                growlnotify -m "Pomodory says $*"
+                growlnotify -m "[Pomodoro] $message"
                 ;;
         Linux) # on Ubuntu => sudo apt-get install libnotify-bin
                # on other systems libnotify
@@ -63,7 +64,7 @@ function notify() {
                 notify-send \
                    --urgency=critical \
                    --expire-time=$(( DELAY * 1000 )) \
-                   --icon=$ICON "Pomodoro says" $*
+                   --icon=$ICON "[Pomodoro] " $message
                 ;;
         *) {
             print -- "I don't made a notification system for your system"
@@ -73,7 +74,17 @@ function notify() {
 }
 
 # show timer
+
 function timer() {
+    local timeToWait=$1
+    shift
+    local message="$*"
+    if pretimer $timeToWait; then
+        posttimer $message
+    fi
+}
+
+function pretimer() {
     local m=$1
     local s=00
     local rem=""
@@ -103,12 +114,14 @@ funtion posttimer() {
     local s=00
     local rem=""
     local firsttime=1
+    local message="$*"
+    notify "$message"
     while : ; do
         ((s++))
         if ((s>59)); then 
             ((s=0)) 
             ((m++))
-            notify "\nTime for a break\n"
+            notify "$message"
         fi
         printf "$rem+%02d:%02d" $m $s
         (( $firsttime )) && {
@@ -204,10 +217,7 @@ while (true) {
     # Start working
     startedTime=$(date +"%H:%M")
     print -n -- "WORK NOW! "
-    if timer $POMODORO_WORKING_TIME; then
-        notify "Time for a break. "
-        posttimer 
-    fi
+    timer $POMODORO_WORKING_TIME "Time for a break."
 
     # work is finished
     print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
@@ -220,5 +230,5 @@ while (true) {
         notify "Relax "
         POMODORO_RELAX_TIME=$POMODORO_SHORT_RELAX_TIME
     fi
-    timer $POMODORO_RELAX_TIME
+    timer $POMODORO_RELAX_TIME "Time to work!"
 }
