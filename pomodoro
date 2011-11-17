@@ -24,12 +24,17 @@ POMODORO_LONG_RELAX_TIME=30
 # during your work session.
 # not you can overide these functions in $HOME/.pomodoro
 pomodoro_work_started() {
-    [[ -x =get-shit-done ]] && sudo =get-shit-done work
+    [[ -x =get-shit-done ]] && {
+        sudo =get-shit-done work
+        print -- "[focus on]"
+    }
 }
 pomodoro_work_time_ended() {}
-pomodoro_pause_started() {}
-pomodoro_pause_time_ended() {
+pomodoro_pause_started() {
     [[ -x =get-shit-done ]] && sudo =get-shit-done play
+}
+pomodoro_pause_time_ended() {
+    pomodoro_work_started
 }
 
 # used to list latests task names
