@@ -18,6 +18,19 @@ POMODORO_TODO_FILE="$POMODORO_LOG_DIRECTORY/TODO.txt"
 POMODORO_WORKING_TIME=25
 POMODORO_SHORT_RELAX_TIME=5
 POMODORO_LONG_RELAX_TIME=30
+# you can install get-shit-done at 
+# http://github.com/yogsototh/get-shit-done.git
+# If you want to block some popular website
+# during your work session.
+# not you can overide these functions in $HOME/.pomodoro
+pomodoro_work_started() {
+    [[ -x =get-shit-done ]] && sudo =get-shit-done work
+}
+pomodoro_work_time_ended() {}
+pomodoro_pause_started() {}
+pomodoro_pause_time_ended() {
+    [[ -x =get-shit-done ]] && sudo =get-shit-done play
+}
 
 # used to list latests task names
 typeset -U latestTasks
@@ -85,8 +98,10 @@ function notify() {
 function timer() {
     local timeToWait=$1
     shift
-    local message="$*"
+    local message="$2"
+    local triggerCmd="$3"
     if pretimer $timeToWait; then
+        eval $triggerCmd
         posttimer $message
     fi
 }
@@ -252,7 +267,8 @@ while (true) {
     # Start working
     startedTime=$(date +"%H:%M")
     print -n -- "WORK NOW! "
-    timer $POMODORO_WORKING_TIME "Time for a break."
+    pomodoro_work_started
+    timer $POMODORO_WORKING_TIME "Time for a break." pomodoro_work_time_ended
 
     # work is finished
     print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
@@ -265,5 +281,6 @@ while (true) {
         notify "Relax "
         POMODORO_RELAX_TIME=$POMODORO_SHORT_RELAX_TIME
     fi
-    timer $POMODORO_RELAX_TIME "Time to work!"
+    pomodoro_pause_started
+    timer $POMODORO_RELAX_TIME "Time to work!" pomodoro_pause_time_ended
 }
