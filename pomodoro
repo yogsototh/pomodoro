@@ -23,19 +23,24 @@ POMODORO_LONG_RELAX_TIME=30
 # If you want to block some popular website
 # during your work session.
 # not you can overide these functions in $HOME/.pomodoro
-pomodoro_work_started() {
+
+function focus_on() {
     [[ -x =get-shit-done ]] && {
         sudo =get-shit-done work
         print -- "[focus on]"
     }
 }
-pomodoro_work_time_ended() {}
-pomodoro_pause_started() {
-    [[ -x =get-shit-done ]] && sudo =get-shit-done play
+function focus_off() {
+    [[ -x =get-shit-done ]] && {
+        sudo =get-shit-done play
+        print -- "[focus off]"
+    }
 }
-pomodoro_pause_time_ended() {
-    pomodoro_work_started
-}
+
+function pomodoro_work_started() { focus_on }
+function pomodoro_work_time_ended() {}
+function pomodoro_pause_started() { focus_off }
+function pomodoro_pause_time_ended() { focus_on }
 
 # used to list latests task names
 typeset -U latestTasks
@@ -102,7 +107,6 @@ function notify() {
 # And the counter grow.
 function timer() {
     local timeToWait=$1
-    shift
     local message="$2"
     local triggerCmd="$3"
     if pretimer $timeToWait; then
@@ -149,6 +153,7 @@ funtion posttimer() {
         if ((s>59)); then 
             ((s=0)) 
             ((m++))
+            print
             notify "$message"
         fi
         printf "$rem+%02d:%02d" $m $s
@@ -181,6 +186,8 @@ function initTodoTasksFromFile() {
 
 # Which file to track your activity?
 function initialize() {
+    # nb is the number of loop we already done
+    nb=1
     # read the .pomodoro file if it exists
     [[ -e $HOME/.pomodoro ]] && source $HOME/.pomodoro
 
@@ -224,9 +231,10 @@ function initialize() {
 }
 
 # ask the title of the tasks
+# And present previous tasks and TODO
 function askTitle() {
-    ((${#latestTasks})) && print
-    i=1;
+    ((${#latestTasks})) && print -P -- "%Bworked tasks%b"
+    local i=1;
     print
     for task in $latestTasks; do
         print -- "$i) $task"
@@ -262,23 +270,10 @@ function askTitle() {
     latestTasks=( $latestTasks "$task" )
 }
 
-initialize
 
-nb=1;
-while (true) {
-    # Ask the user the title of the task
-    askTitle
-
-    # Start working
-    startedTime=$(date +"%H:%M")
-    print -n -- "WORK NOW! "
-    pomodoro_work_started
-    timer $POMODORO_WORKING_TIME "Time for a break." pomodoro_work_time_ended
-
-    # work is finished
-    print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
-
-    # Time for a break
+# first 3 pauses are short ones
+# the 4th is a long one
+function compute_pause_time() {
     if ((nb++ % 4 == 0)); then 
         notify "Long pause "
         POMODORO_RELAX_TIME=$POMODORO_LONG_RELAX_TIME
@@ -286,6 +281,32 @@ while (true) {
         notify "Relax "
         POMODORO_RELAX_TIME=$POMODORO_SHORT_RELAX_TIME
     fi
+}
+
+# ------------- START -------------
+
+initialize
+
+while (true) {
+    # Ask the user the title of the task
+    askTitle
+
+    # Start working
+    startedTime=$(date +"%H:%M")
+
+    # notification isn't needed
+    print -n -- "WORK NOW! "
+
+    pomodoro_work_started
+    timer $POMODORO_WORKING_TIME "Time for a break." pomodoro_work_time_ended
+    # Task finished
+
+    # Write logs
+    print "$(date +"%A (%F) $startedTime → %H:%M") $task" >> $logfile
+
+    # Time for a break
+    compute_pause_time
+
     pomodoro_pause_started
     timer $POMODORO_RELAX_TIME "Time to work!" pomodoro_pause_time_ended
 }
