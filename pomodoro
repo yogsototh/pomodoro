@@ -153,8 +153,7 @@ funtion posttimer() {
         if ((s>59)); then 
             ((s=0)) 
             ((m++))
-            print
-            notify "$message"
+            notify "\r$message      "
         fi
         printf "$rem+%02d:%02d" $m $s
         (( $firsttime )) && {
@@ -259,7 +258,7 @@ function askTitle() {
             return
         fi
         # if the number is a todo task number
-        task=$(( task - ${#latestTasks} + 1 ))
+        task=$(( task - ${#latestTasks} ))
         if (( task <= ${#todoTasks} )); then
             task="${todoTasks[$task]}"
             return
