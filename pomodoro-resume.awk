@@ -32,7 +32,10 @@ function message(){
 
 # Print the result
 END {
+    maxlen=0;
+    for (i in time) {
+        if (length(i)>maxlen) { maxlen=length(i); } }
     for(i in time) {
-        print i"\t:\t"timeFromMin(time[i]);
+        printf "%-"maxlen"s: %s\n",i,timeFromMin(time[i]);
     }
 }

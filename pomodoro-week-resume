@@ -1,0 +1,61 @@
+#!/usr/bin/env zsh
+
+# Here how it is intended to work
+# When you start the script, it asks you the name of the task
+# Then you work for 25 min. 
+# Once finished you are notified it is time to take a break (5 min).
+# After 4 work sessions, you take a longer break (30 min).
+# Each work session require you enter a name.
+# At the end of the day, all your tasks are keep into ~/Documents/Pomodoro
+
+POMODORO_NO_LOGS=0
+POMODORO_LOG_DIRECTORY="$HOME/Documents/Pomodoro"
+# if you add a TODO.txt file in $POMODORO_LOG_DIRECTORY
+# The list of TODO is presented for shortcut
+POMODORO_TODO_FILE="$POMODORO_LOG_DIRECTORY/TODO.txt"
+
+# used to list latests task names
+typeset -U latestTasks
+typeset -U todoTasks
+
+function showConfMessage() {
+    print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
+    print -- "For example you could add: "
+    print -- "POMODORO_NOTIFY=\"notify_cmd --message=%m\""
+    print
+    print -- "Then notification will be executed as \"notify_cmd\" --message=\"notification message\""
+}
+
+# Which file to track your activity?
+function initialize() {
+    # read the .pomodoro file if it exists
+    [[ -e $HOME/.pomodoro ]] && source $HOME/.pomodoro
+
+    if ((POMODORO_NO_LOGS)); then
+        exit
+    fi
+    # Verify where to write podomoro logs
+    logfiledir="$POMODORO_LOG_DIRECTORY"
+    logfilename=$(date +"week-%V-%Y.txt")
+
+    case $(uname) in
+        Linux) lastweeklogfilename=$(date -d 'last week' +"week-%V-%Y.txt");;
+        *) lastweeklogfilename=$(date -v-7d +"week-%V-%Y.txt");;
+    esac
+    logfile=$logfiledir/$logfilename
+    lastweeklogfile=$logfiledir/$lastweeklogfilename
+}
+
+# ------------- START -------------
+initialize
+
+if [[ -r $lastweeklogfile  ]]; then
+    print -P -- "%B$lastweeklogfilename%b"
+    pomodoro-resume.awk $lastweeklogfile
+    print
+fi
+
+if [[ -r $logfile ]]; then
+    print -P -- "%B$logfilename%b"
+    pomodoro-resume.awk $logfile
+fi
