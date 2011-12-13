@@ -179,7 +179,7 @@ function initLatestTasksFromLogFile() {
 
 function initTodoTasksFromFile() {
     [[ ! -r $POMODORO_TODO_FILE ]] && return
-    local cmd="todoTasks=( $(< $POMODORO_TODO_FILE | awk '{printf "\""; gsub(/"/,"\\\""); printf $0; print "\""; }') )"
+    local cmd="todoTasks=( $(< $POMODORO_TODO_FILE | egrep -v '%(wait|done)' | awk '{printf "\""; gsub(/"/,"\\\""); printf $0; print "\""; }') )"
     eval $cmd
 }
 
