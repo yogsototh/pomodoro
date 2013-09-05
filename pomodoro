@@ -2,7 +2,7 @@
 
 # Here how it is intended to work
 # When you start the script, it asks you the name of the task
-# Then you work for 25 min. 
+# Then you work for 25 min.
 # Once finished you are notified it is time to take a break (5 min).
 # After 4 work sessions, you take a longer break (30 min).
 # Each work session require you enter a name.
@@ -17,36 +17,39 @@ POMODORO_TODO_FILE="$POMODORO_LOG_DIRECTORY/TODO.txt"
 # times are in minutes
 POMODORO_WORKING_TIME=25
 POMODORO_SHORT_RELAX_TIME=5
-POMODORO_LONG_RELAX_TIME=30
+POMODORO_LONG_RELAX_TIME=15
 # you can install get-shit-done at 
 # http://github.com/yogsototh/get-shit-done.git
 # If you want to block some popular website
 # during your work session.
-# not you can overide these functions in $HOME/.pomodoro
+# note you can overide these functions in $HOME/.pomodoro
 
-function focus_on() {
-    [[ -x =get-shit-done ]] && {
+has(){
+    which $1 >/dev/null 2>&1
+}
+focus_on() {
+    has get-shit-done && {
         sudo =get-shit-done work
         print -- "[focus on]"
     }
 }
-function focus_off() {
-    [[ -x =get-shit-done ]] && {
+focus_off() {
+    has get-shit-done && {
         sudo =get-shit-done play
         print -- "[focus off]"
     }
 }
 
-function pomodoro_work_started() { focus_on }
-function pomodoro_work_time_ended() {}
-function pomodoro_pause_started() { focus_off }
-function pomodoro_pause_time_ended() { focus_on }
+pomodoro_work_started() { focus_on }
+pomodoro_work_time_ended() {}
+pomodoro_pause_started() { focus_off }
+pomodoro_pause_time_ended() { focus_on }
 
 # used to list latests task names
 typeset -U latestTasks
 typeset -U todoTasks
 
-function showConfMessage() {
+showConfMessage() {
     print -- "You can use the \$HOME/.pomodoro file to declare your own notification system"
     print -- "For example you could add: "
     print -- "POMODORO_NOTIFY=\"notify_cmd --message=%m\""
@@ -55,7 +58,7 @@ function showConfMessage() {
 }
 
 # A nofity function as portable as possible
-function notify() {
+notify() {
     local message="$*"
 
     print -n -- "$message"
@@ -63,39 +66,29 @@ function notify() {
         eval $( echo $POMODORO_NOTIFY | sed 's/%m/"'$message'"/g' )
         return
     fi
-
     case $(uname) in
         Darwin) # On Mac
-                if [[ ! -x =growlnotify ]]; then 
-                    {
-                    print -- "Growl seems not to be installed"
-                    print -- "If you want to be notified you should install it"
-                    print -- "More precisely I need the executable growlnotify"
-                    showConfMessage
-                    return
-                    } >&2
+                if has terminal-notifier; then
+                    # you could install terminal-notifier from brew
+                    terminal-notifier -message "$message" -title "pomodoro"
                 fi
-                growlnotify -m "[Pomodoro] $message"
+                if has growlnotify; then
+                    growlnotify -m "[Pomodoro] $message"
+                fi
                 ;;
         Linux) # on Ubuntu => sudo apt-get install libnotify-bin
                # on other systems libnotify
                local DELAY=5 # in seconds
                local ICON=/usr/share/icons/Tango/32x32/actions/appointment.png
-               if [[ ! -x =notify-send ]]; then 
-                    {
-                    print -- "notify-send seems not installed"
-                    print -- "Please install libnotify (apt-get install libnotify) on ubuntu for example"
-                    showConfMessage
-                    } >&2
-                    return
-                fi
+               if has notify-send; then
                 notify-send \
                    --urgency=critical \
                    --expire-time=$(( DELAY * 1000 )) \
                    --icon=$ICON "[Pomodoro] " $message
-                ;;
+               fi
+               ;;
         *) {
-            print -- "I don't made a notification system for your system"
+            print -- "I didn't made any notification for your system"
             showConfMessage
             } >&2
     esac
