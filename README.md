@@ -21,3 +21,6 @@ The work session:
 After you pressed enter you enter the pause session.
 Simply rest, you will be notified when it is time for another work session.
 You can shorten the pause by pressing enter.
+
+Also it works nicely with [get-shit-done](http://github.com/yogsototh/get-shit-done.git). Mainly get-shit-done block a list of websites know to favorise procrastination.
+
