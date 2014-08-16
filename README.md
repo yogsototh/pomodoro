@@ -15,8 +15,9 @@ The work session:
 
 1. You to enter the title of the task. If you already entered some tasks, they are added as options, and you can simply enter a number.
 2. It starts a timer for 25 minutes.
-    a. You could end it before the 25 minutes by pressing enter.
-    b. You could wait the 25 minutes to stop, then you are notified it is time to take a break. If you don't press enter (inside the launched terminal), you are notified each minute. The timer add a "+" before and grow.
+
+  - You could end it before the 25 minutes by pressing enter.
+  - You could wait the 25 minutes to stop, then you are notified it is time to take a break. If you don't press enter (inside the launched terminal), you are notified each minute. The timer add a "+" before and grow.
 
 After you pressed enter you enter the pause session.
 Simply rest, you will be notified when it is time for another work session.
