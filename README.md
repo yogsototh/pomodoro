@@ -1,3 +1,12 @@
+> This project has two homes.
+> It is ok to work in github, still, for a better decentralized web
+> please consider contributing (issues, PR, etc...) throught:
+>
+> https://gitlab.esy.fun/yogsototh/pomodoro
+
+---
+
+
 # Pomodoro task tracker
 
 This is a command line tool to help you follow the [pomodoro technique](http://www.pomodorotechnique.com/).
